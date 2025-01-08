@@ -132,12 +132,65 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       let token = Token::Num(number_value);
       tokens.push(token);
     }
-
+    
+    // Simple character
+    // No need further clarification
     '+' => {
       tokens.push(Token::Plus);
       i += 1;
     }
+    '-' => {
+      tokens.push(Token::Substract);
+      i += 1;
+    }
+    '*' => {
+      tokens.push(Token::Multiply);
+      i += 1;
+    }
+    '/' => {
+      tokens.push(Token::Divide);
+      i += 1;
+    }
+    '(' => {
+      tokens.push(Token::LeftParen);
+      i += 1;
+    }
+    ')' => {
+      tokens.push(Token::RightParen);
+      i += 1;
+    }
+    '{' => {
+      tokens.push(Token::LeftCurly);
+      i += 1;
+    }
+    '}' => {
+      tokens.push(Token::RightCurly);
+      i += 1;
+    }
+    '[' => {
+      tokens.push(Token::LeftBracket);
+      i += 1;
+    }
+    ']' => {
+      tokens.push(Token::RightBracket);
+      i += 1;
+    }
+    ',' => {
+      tokens.push(Token::Comma);
+      i += 1;
+    }
+    ';' => {
+      tokens.push(Token::Semicolon);
+      i += 1;
+    }
 
+    // Ambiguious character
+    // Need to check the next character behind the current character
+    
+    // Comment
+    // We will ignore all characters following '#' until newline (\n)
+
+    // Space or newline
     ' ' | '\n' => {
       i += 1;
     }
