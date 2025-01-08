@@ -207,6 +207,18 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
     
     // Comment
     // We will ignore all characters following '#' until newline (\n)
+    '#' => {
+      i += 1;
+      while i < bytes.len(){
+        let curr = bytes[i] as char;
+        if (curr != '\n'){
+          i += 1;
+        }else{
+          i += 1;
+          break;
+        }
+      }
+    }
 
     // Space or newline
     ' ' | '\n' => {
