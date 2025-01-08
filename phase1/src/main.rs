@@ -72,20 +72,38 @@ fn main() {
 // but Plus, Subtract, Multiply, etc. have no values associated with it.
 #[derive(Debug, Clone)]
 enum Token {
+  Func,
+  Return,
+  Int,
+  Print,
+  Read,
+  While,
+  If,
+  Else,
+  Break,
+  Continue,
+  LeftParen,
+  RightParen,
+  LeftCurly,
+  RightCurly,
+  LeftBracket,
+  RightBracket,
+  Comma,
+  Semicolon,
   Plus,
   Subtract,
   Multiply,
   Divide,
   Modulus,
   Assign,
+  Less,
+  LessEqual,
+  Greater,
+  GreaterEqual,
+  Equality,
+  NotEqual,
   Num(i32),
   Ident(String),
-  If,
-  While,
-  Read, 
-  Func,
-  Return,
-  Int,
   End,
 }
 
@@ -140,7 +158,7 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       i += 1;
     }
     '-' => {
-      tokens.push(Token::Substract);
+      tokens.push(Token::Subtract);
       i += 1;
     }
     '*' => {
