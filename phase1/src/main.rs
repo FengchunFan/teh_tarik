@@ -142,8 +142,13 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
         let digit = bytes[i] as char;
         if digit >= '0' && digit <= '9' {
           i += 1;
-        } else {
+        } else if digit == ' ' || digit == '\n' {
+          // If reached here, means all digits until space or newline
           break;
+        } else {
+          // If current character is a alphabet or any other unrecognized character
+          // Return error message
+          return Err(format!("Detect unknown character behind digits at index {}", i));
         }
       }
       let end = i;
