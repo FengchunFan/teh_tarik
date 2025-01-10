@@ -133,6 +133,8 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
 
     match c {
 
+    // Digits
+    // If characters among digits, return error message
     '0'..='9' => {
       let start = i;
       i += 1;
@@ -150,7 +152,11 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       let token = Token::Num(number_value);
       tokens.push(token);
     }
-    
+   
+    // Characters
+    // If character-made string does not match any predefined tokens
+    // It is considered a Identifier
+
     // Simple character
     // No need further clarification
     '+' => {
@@ -204,7 +210,99 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
 
     // Ambiguious character
     // Need to check the next character behind the current character
-    
+    '>' => {
+      i += 1;
+      // If this is the end of the string
+      if i >= bytes.len(){
+        tokens.push(Token::Greater);      
+      }else{
+        // Insert token based on what is next character
+        let curr = bytes[i] as char;
+        match curr {
+          '=' => {
+            tokens.push(Token::GreaterEqual);
+            i += 1;
+          }
+          ' ' => {
+            tokens.push(Token::Greater);
+            i += 1;
+          }
+          _ => {
+            return Err(format!("Unrecognized symbol '>{}'", curr));
+          }   
+        }
+      }
+    }
+    '<' => {
+      i += 1;
+      // If this is the end of the string
+      if i >= bytes.len(){
+        tokens.push(Token::Less);
+      }else{
+        // Insert token based on what is next character
+        let curr = bytes[i] as char;
+        match curr {
+          '=' => {
+            tokens.push(Token::LessEqual);
+            i += 1;
+          }
+          ' ' => {
+            tokens.push(Token::Less);
+            i += 1;
+          }
+          _ => {
+            return Err(format!("Unrecognized symbol '<{}'", curr));
+          }
+        }
+      }
+    }
+    '=' => {
+      i += 1;
+      // If this is the end of the string
+      if i >= bytes.len(){
+        tokens.push(Token::Assign);
+      }else{
+        // Insert token based on what is next character
+        let curr = bytes[i] as char;
+        match curr {
+          '=' => {
+            tokens.push(Token::Equality);
+            i += 1;
+          }
+          ' ' => {
+            tokens.push(Token::Assign);
+            i += 1;
+          }
+          _ => {
+            return Err(format!("Unrecognized symbol '={}'", curr));
+          }
+        }
+      }
+    }
+    '!' => {
+      i += 1;
+      // If this is the end of the string
+      if i >= bytes.len(){
+        // ! itself is not recognized
+        return Err(format!("Unrecognized symbol '!'"));
+      }else{
+        // Insert token based on what is next character
+        let curr = bytes[i] as char;
+        match curr {
+          '=' => {
+            tokens.push(Token::NotEqual);
+            i += 1;
+          }
+          ' ' => {
+            return Err(format!("Unrecognized symbol '!'"));
+          }
+          _ => {
+            return Err(format!("Unrecognized symbol '!'"));
+          }
+        }
+      }
+    }
+
     // Comment
     // We will ignore all characters following '#' until newline (\n)
     '#' => {
@@ -224,7 +322,9 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
     ' ' | '\n' => {
       i += 1;
     }
-
+    
+    // If other characters encountered
+    // Return error message
     _ => {
       return Err(format!("Unrecognized symbol '{}'", c));
     }
