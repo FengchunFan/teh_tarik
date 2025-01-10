@@ -159,10 +159,10 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
     }
    
     // Characters
-    // If character-made string does not match any predefined tokens
+    // If character-made string does not match any keywords
     // It is considered a Identifier
 
-    // Simple character
+    // Simple symbols
     // No need further clarification
     '+' => {
       tokens.push(Token::Plus);
@@ -213,7 +213,7 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       i += 1;
     }
 
-    // Ambiguious character
+    // Special symbols
     // Need to check the next character behind the current character
     '>' => {
       i += 1;
