@@ -145,6 +145,12 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
         } else if digit == ' ' || digit == '\n' {
           // If reached here, means all digits until space or newline
           break;
+        } else if digit == '(' || digit == ')' || digit == '{' || digit == '}' || digit == '[' || digit == ']'{
+          // If reached here, similar logic as above, all digits are legal until meeting a type of bracket
+          break;
+        } else if digit == ',' || digit == ';'{
+          // If reached here, similar logic as above, all digits are legal until meeting a type of comma
+          break;
         } else {
           // If current character is a alphabet or any other unrecognized character
           // Return error message
@@ -172,6 +178,12 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
           i += 1;
         } else if curr == ' ' || curr == '\n' {
           // If reached here, means all characters are legal until space or newline
+          break;
+        } else if curr == '(' || curr == ')' || curr == '{' || curr == '}' || curr == '[' || curr == ']'{
+          // If reached here, similar logic as above, all characters are legal until meeting a type of bracket
+          break;
+        } else if curr == ',' || curr == ';'{
+          // If reached here, similar logic as above, all characters are legal until meeting a type of comma
           break;
         } else {
           // If current character is a unrecognized, return error message

@@ -1,8 +1,6 @@
-
-1 12
-( ) { }
-[ ] ;
-# cohuhdiwd ew
-> >= < <=
-== = !=
-func funcc 
+func main() {
+  int a;
+  int b;
+  int c;
+  a = 100;
+ 
