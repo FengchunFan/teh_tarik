@@ -1,0 +1,53 @@
+----------------------
+Finished Lexing the file ./examples/add.tt
+File Contents:
+# A simple program which adds two numbers together
+# This program should output '150'
+
+func main() {
+  int a;
+  int b;
+  int c;
+  a = 100;
+  b = 50;
+  c = a + b;
+  print(c);
+}
+
+Here are the Results:
+----------------------
+Func
+Ident("main")
+LeftParen
+RightParen
+LeftCurly
+Int
+Ident("a")
+Semicolon
+Int
+Ident("b")
+Semicolon
+Int
+Ident("c")
+Semicolon
+Ident("a")
+Assign
+Num(100)
+Semicolon
+Ident("b")
+Assign
+Num(50)
+Semicolon
+Ident("c")
+Assign
+Ident("a")
+Plus
+Ident("b")
+Semicolon
+Print
+LeftParen
+Ident("c")
+RightParen
+Semicolon
+RightCurly
+End

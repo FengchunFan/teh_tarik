@@ -1,0 +1,45 @@
+----------------------
+Finished Lexing the file ./examples/loop.tt
+File Contents:
+func main() {
+    int i;
+    i = 0;
+    while i < 10 {
+        print(i);
+        i = i + 1;
+    }
+}
+
+Here are the Results:
+----------------------
+Func
+Ident("main")
+LeftParen
+RightParen
+LeftCurly
+Int
+Ident("i")
+Semicolon
+Ident("i")
+Assign
+Num(0)
+Semicolon
+While
+Ident("i")
+Less
+Num(10)
+LeftCurly
+Print
+LeftParen
+Ident("i")
+RightParen
+Semicolon
+Ident("i")
+Assign
+Ident("i")
+Plus
+Num(1)
+Semicolon
+RightCurly
+RightCurly
+End

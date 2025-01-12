@@ -1,0 +1,95 @@
+----------------------
+Finished Lexing the file ./examples/array.tt
+File Contents:
+func main() {
+    int [4] array;
+
+    # Should print out '2'
+    array[0] = 2;
+    print(array[0]);
+
+    # Should print out '4'
+    array[1] = array[0] + array[0];
+    print(array[1]);
+
+    # Should print out '8'
+    array[2] = array[1] + 2 * 2;
+    print(array[2]);
+
+}
+
+Here are the Results:
+----------------------
+Func
+Ident("main")
+LeftParen
+RightParen
+LeftCurly
+Int
+LeftBracket
+Num(4)
+RightBracket
+Ident("array")
+Semicolon
+Ident("array")
+LeftBracket
+Num(0)
+RightBracket
+Assign
+Num(2)
+Semicolon
+Print
+LeftParen
+Ident("array")
+LeftBracket
+Num(0)
+RightBracket
+RightParen
+Semicolon
+Ident("array")
+LeftBracket
+Num(1)
+RightBracket
+Assign
+Ident("array")
+LeftBracket
+Num(0)
+RightBracket
+Plus
+Ident("array")
+LeftBracket
+Num(0)
+RightBracket
+Semicolon
+Print
+LeftParen
+Ident("array")
+LeftBracket
+Num(1)
+RightBracket
+RightParen
+Semicolon
+Ident("array")
+LeftBracket
+Num(2)
+RightBracket
+Assign
+Ident("array")
+LeftBracket
+Num(1)
+RightBracket
+Plus
+Num(2)
+Multiply
+Num(2)
+Semicolon
+Print
+LeftParen
+Ident("array")
+LeftBracket
+Num(2)
+RightBracket
+RightParen
+Semicolon
+RightCurly
+End

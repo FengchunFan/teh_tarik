@@ -1,0 +1,97 @@
+----------------------
+Finished Lexing the file ./examples/function.tt
+File Contents:
+func add(int a, int b) {
+    return a + b;
+}
+
+func mul(int a, int b) {
+     return a * b;
+}
+
+func main() {
+    int a;
+    int b;
+    a = add(10, 2);
+    print(a);
+    b = mul(a, a + b);
+    print(b);
+}
+
+Here are the Results:
+----------------------
+Func
+Ident("add")
+LeftParen
+Int
+Ident("a")
+Comma
+Int
+Ident("b")
+RightParen
+LeftCurly
+Return
+Ident("a")
+Plus
+Ident("b")
+Semicolon
+RightCurly
+Func
+Ident("mul")
+LeftParen
+Int
+Ident("a")
+Comma
+Int
+Ident("b")
+RightParen
+LeftCurly
+Return
+Ident("a")
+Multiply
+Ident("b")
+Semicolon
+RightCurly
+Func
+Ident("main")
+LeftParen
+RightParen
+LeftCurly
+Int
+Ident("a")
+Semicolon
+Int
+Ident("b")
+Semicolon
+Ident("a")
+Assign
+Ident("add")
+LeftParen
+Num(10)
+Comma
+Num(2)
+RightParen
+Semicolon
+Print
+LeftParen
+Ident("a")
+RightParen
+Semicolon
+Ident("b")
+Assign
+Ident("mul")
+LeftParen
+Ident("a")
+Comma
+Ident("a")
+Plus
+Ident("b")
+RightParen
+Semicolon
+Print
+LeftParen
+Ident("b")
+RightParen
+Semicolon
+RightCurly
+End

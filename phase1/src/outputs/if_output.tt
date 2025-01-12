@@ -1,0 +1,112 @@
+----------------------
+Finished Lexing the file ./examples/if.tt
+File Contents:
+func main() {
+    int a;
+    int b;
+    int c;
+
+    
+    a = 100;
+    b = 50;
+    if a < b {
+        c = 0;
+    } else {
+        c = 1;
+    }
+
+    # Should print out '1'.
+    print(c);
+
+
+
+    a = 100;
+    b = 50;
+    if a >= b {
+        c = 0;
+    } else {
+        c = 1;
+    }
+
+    # Should print out '0'
+    print(c);
+}
+
+Here are the Results:
+----------------------
+Func
+Ident("main")
+LeftParen
+RightParen
+LeftCurly
+Int
+Ident("a")
+Semicolon
+Int
+Ident("b")
+Semicolon
+Int
+Ident("c")
+Semicolon
+Ident("a")
+Assign
+Num(100)
+Semicolon
+Ident("b")
+Assign
+Num(50)
+Semicolon
+If
+Ident("a")
+Less
+Ident("b")
+LeftCurly
+Ident("c")
+Assign
+Num(0)
+Semicolon
+RightCurly
+Else
+LeftCurly
+Ident("c")
+Assign
+Num(1)
+Semicolon
+RightCurly
+Print
+LeftParen
+Ident("c")
+RightParen
+Semicolon
+Ident("a")
+Assign
+Num(100)
+Semicolon
+Ident("b")
+Assign
+Num(50)
+Semicolon
+If
+Ident("a")
+GreaterEqual
+Ident("b")
+LeftCurly
+Ident("c")
+Assign
+Num(0)
+Semicolon
+RightCurly
+Else
+LeftCurly
+Ident("c")
+Assign
+Num(1)
+Semicolon
+RightCurly
+Print
+LeftParen
+Ident("c")
+RightParen
+Semicolon
+RightCurly
+End
