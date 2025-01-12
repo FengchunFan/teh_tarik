@@ -161,6 +161,64 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
     // Characters
     // If character-made string does not match any keywords
     // It is considered a Identifier
+    'a'..='z' | 'A'..='Z' => {
+      let start = i;
+      i += 1;
+      while i < bytes.len() {
+        let curr = bytes[i] as char;
+        // Variables begin with an upper or lower case letters A-Z followed by a sequence of underscores or numbers.
+        if curr.is_alphanumeric() || curr == '_'{
+          i += 1;
+        } else if curr == ' ' || curr == '\n' {
+          // If reached here, means all characters are legal until space or newline
+          break;
+        } else {
+          // If current character is a unrecognized, return error message
+          return Err(format!("Detect unknown character behind variable at index {}", i));
+        }
+      }
+      let end = i;
+      let string_token = &code[start..end];
+      // Check if this parsed string is a predefined keyword
+      match string_token {
+        "func" => {
+          tokens.push(Token::Func);
+        }
+        "return" => {
+          tokens.push(Token::Return);
+        }
+        "int" => {
+          tokens.push(Token::Int);
+        }
+        "print" => {
+          tokens.push(Token::Print);
+        }
+        "read" => {
+          tokens.push(Token::Read);
+        }
+        "while" => {
+          tokens.push(Token::While);
+        }
+        "if" => {
+          tokens.push(Token::If);
+        }
+        "else" => {
+          tokens.push(Token::Else);
+        }
+        "break" => {
+          tokens.push(Token::Break);
+        }
+        "continue" => {
+          tokens.push(Token::Continue);
+        }
+        // Else, it is a variable
+        _ => {
+          // change &str -> String
+          let token = Token::Ident(string_token.to_string());
+          tokens.push(token);
+        }
+      }
+    }
 
     // Simple symbols
     // No need further clarification
@@ -212,6 +270,10 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       tokens.push(Token::Semicolon);
       i += 1;
     }
+    '%' => {
+      tokens.push(Token::Modulus);
+      i += 1;
+    }
 
     // Special symbols
     // Need to check the next character behind the current character
@@ -220,7 +282,7 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       // If this is the end of the string
       if i >= bytes.len(){
         tokens.push(Token::Greater);      
-      }else{
+      } else {
         // Insert token based on what is next character
         let curr = bytes[i] as char;
         match curr {
@@ -243,7 +305,7 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       // If this is the end of the string
       if i >= bytes.len(){
         tokens.push(Token::Less);
-      }else{
+      } else {
         // Insert token based on what is next character
         let curr = bytes[i] as char;
         match curr {
@@ -266,7 +328,7 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       // If this is the end of the string
       if i >= bytes.len(){
         tokens.push(Token::Assign);
-      }else{
+      } else {
         // Insert token based on what is next character
         let curr = bytes[i] as char;
         match curr {
@@ -288,9 +350,9 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       i += 1;
       // If this is the end of the string
       if i >= bytes.len(){
-        // ! itself is not recognized
+        // '!' itself is not recognized
         return Err(format!("Unrecognized symbol '!'"));
-      }else{
+      } else {
         // Insert token based on what is next character
         let curr = bytes[i] as char;
         match curr {
@@ -314,9 +376,9 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       i += 1;
       while i < bytes.len(){
         let curr = bytes[i] as char;
-        if (curr != '\n'){
+        if curr != '\n'{
           i += 1;
-        }else{
+        } else {
           i += 1;
           break;
         }
