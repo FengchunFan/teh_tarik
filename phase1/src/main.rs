@@ -167,6 +167,7 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       while i < bytes.len() {
         let curr = bytes[i] as char;
         // Variables begin with an upper or lower case letters A-Z followed by a sequence of underscores or numbers.
+        // reference: https://stackoverflow.com/questions/29873569/check-whether-a-char-is-a-letter-or-a-number
         if curr.is_alphanumeric() || curr == '_'{
           i += 1;
         } else if curr == ' ' || curr == '\n' {
@@ -211,7 +212,7 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
         "continue" => {
           tokens.push(Token::Continue);
         }
-        // Else, it is a variable
+        // Else, it is a identifier
         _ => {
           // change &str -> String
           let token = Token::Ident(string_token.to_string());
