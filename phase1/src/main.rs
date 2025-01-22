@@ -328,7 +328,6 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
           }
           _ => {
             tokens.push(Token::Less);
-            i += 1;
           }
         }
       }
