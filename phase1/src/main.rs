@@ -154,7 +154,9 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
         } else {
           // If current character is a alphabet or any other unrecognized character
           // Return error message
-          return Err(format!("Detect unknown character behind digits at index {}", i));
+          let end = i+1;
+          let string_token = &code[start..end]; 
+          return Err(format!("Detect invalid identifier {}", string_token));
         }
       }
       let end = i;
@@ -187,7 +189,9 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
           break;
         } else {
           // If current character is a unrecognized, return error message
-          return Err(format!("Detect unknown character behind variable at index {}", i));
+          let end = i+1;
+          let string_token = &code[start..end]; 
+          return Err(format!("Detect invalid identifier {}", string_token));
         }
       }
       let end = i;
@@ -303,13 +307,9 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
             tokens.push(Token::GreaterEqual);
             i += 1;
           }
-          ' ' => {
-            tokens.push(Token::Greater);
-            i += 1;
-          }
           _ => {
-            return Err(format!("Unrecognized symbol '>{}'", curr));
-          }   
+            tokens.push(Token::Greater);
+          }
         }
       }
     }
@@ -326,12 +326,8 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
             tokens.push(Token::LessEqual);
             i += 1;
           }
-          ' ' => {
-            tokens.push(Token::Less);
-            i += 1;
-          }
           _ => {
-            return Err(format!("Unrecognized symbol '<{}'", curr));
+            tokens.push(Token::Less);
           }
         }
       }
@@ -349,12 +345,8 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
             tokens.push(Token::Equality);
             i += 1;
           }
-          ' ' => {
-            tokens.push(Token::Assign);
-            i += 1;
-          }
           _ => {
-            return Err(format!("Unrecognized symbol '={}'", curr));
+            tokens.push(Token::Assign);
           }
         }
       }
@@ -372,9 +364,6 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
           '=' => {
             tokens.push(Token::NotEqual);
             i += 1;
-          }
-          ' ' => {
-            return Err(format!("Unrecognized symbol '!'"));
           }
           _ => {
             return Err(format!("Unrecognized symbol '!'"));
