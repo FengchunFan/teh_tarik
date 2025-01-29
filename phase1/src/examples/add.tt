@@ -10,4 +10,3 @@ func main() {
   c = a + b;
   print(c);
 }
-
