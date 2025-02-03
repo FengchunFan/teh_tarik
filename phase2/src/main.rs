@@ -735,7 +735,7 @@ fn parse_boolean_expression(tokens: &Vec<Token>, index: &mut usize) -> Result<()
       }
     }
 
-    _ => {return Err(String::from("expected '['"));}
+    _ => {return Err(String::from("In Boolean Expression, expecting relational operators after expression"));}
 
   };
 
