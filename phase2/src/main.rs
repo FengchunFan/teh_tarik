@@ -426,41 +426,6 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
   return Ok(tokens);
 }
 
-// writing tests!
-// testing shows robustness in software, and is good for spotting regressions
-// to run a test, type "cargo test" in the terminal.
-// Rust will then run all the functions annotated with the "#[test]" keyword.
-// #[cfg(test)]
-// mod tests {
-//     use crate::Token;
-//     use crate::lex;
-
-//     #[test]
-//     fn lexer_test() {
-//         // test that lexer works on correct cases
-//         let toks = lex("1 + 2 + 3").unwrap();
-//         assert!(toks.len() == 6);
-//         assert!(matches!(toks[0], Token::Num(1)));
-//         assert!(matches!(toks[1], Token::Plus));
-//         assert!(matches!(toks[2], Token::Num(2)));
-//         assert!(matches!(toks[3], Token::Plus));
-//         assert!(matches!(toks[4], Token::Num(3)));
-//         assert!(matches!(toks[5], Token::End));
-
-//         let toks = lex("3 + 215 +").unwrap();
-//         assert!(toks.len() == 5);
-//         assert!(matches!(toks[0], Token::Num(3)));
-//         assert!(matches!(toks[1], Token::Plus));
-//         assert!(matches!(toks[2], Token::Num(215)));
-//         assert!(matches!(toks[3], Token::Plus));
-//         assert!(matches!(toks[4], Token::End));
-
-//         // test that the lexer catches invalid tokens
-//         assert!(matches!(lex("^^^"), Err(_)));
-//     }
-
-// }
-
 fn parse_program(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
   assert!(tokens.len() >= 1 && matches!(tokens[tokens.len() - 1], Token::End));
   while !at_end(tokens, *index) {
@@ -489,50 +454,61 @@ fn at_end(tokens: &Vec<Token>, index: usize) -> bool {
 fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
 
   match tokens[*index] {
-  Token::Func => { *index += 1; }
-  _ => { return Err(String::from("functions must begin with func")); }
+    Token::Func => { *index += 1; }
+    _ => { return Err(String::from("functions must begin with func")); }
   }
 
   match tokens[*index] {
-  Token::Ident(_) => { *index += 1; }
-  _  => { return Err(String::from("functions must have a function identifier"));}
+    Token::Ident(_) => { *index += 1; }
+    _  => { return Err(String::from("functions must have a function identifier"));}
   }
 
   match tokens[*index] {
-  Token::LeftParen => { *index += 1; }
-  _ => { return Err(String::from("expected '('"));}
+    Token::LeftParen => { *index += 1; }
+    _ => { return Err(String::from("expected '('"));}
   }
 
-  //If there is a declaration in the function
+  // If there is a declaration in the function
+  // Then we go into the loop
   while !matches!(tokens[*index], Token::RightParen) {
-
-    match parse_declaration_statement(tokens, index) {
-    Ok(()) => {}
-    Err(e) => {return Err(e);}
+    // We need to first match an declaration
+    match parse_declaration(tokens, index) {
+      Ok(()) => {}
+      Err(e) => {return Err(e);}
     }
+    // While there is Comma
+    while matches!(tokens[*index], Token::Comma) {
+      // We pass forward from the Comma and check one additional declaration
+      *index += 1;
+      match parse_declaration(tokens, index) {
+        Ok(()) => {}
+        Err(e) => {return Err(e);}
+      }
+    }
+    break;
   }
 
   match tokens[*index] {
-  Token::RightParen => { *index += 1; }
-  _ => { return Err(String::from("expected ')'"));}
+    Token::RightParen => { *index += 1; }
+    _ => { return Err(String::from("expected ')'"));}
   }
 
   match tokens[*index] {
-  Token::LeftCurly => { *index += 1; }
-  _ => { return Err(String::from("expected '{'"));}
+    Token::LeftCurly => { *index += 1; }
+    _ => { return Err(String::from("expected '{'"));}
   }
 
   while !matches!(tokens[*index], Token::RightCurly) {
 
     match parse_statement(tokens, index) {
-    Ok(()) => {}
-    Err(e) => {return Err(e);}
+      Ok(()) => {}
+      Err(e) => {return Err(e);}
     }
   }
 
   match tokens[*index] {
-  Token::RightCurly => { *index += 1; }
-  _ => { return Err(String::from("expected '}'")); }
+    Token::RightCurly => { *index += 1; }
+    _ => { return Err(String::from("expected '}'")); }
   }
 
   return Ok(());
@@ -556,20 +532,81 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String>
   }
 }
 
+//this function handles the declaration of a function's parameters
+fn parse_declaration(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
+  match tokens[*index] {
+    Token::Int => {*index += 1;}
+    _ => {return Err(String::from("Declaration statements must being with 'int' keyword"));}
+  }
+
+  //If it is an identifier, we can just pass forward
+  //add code that handles declarations such as int [8] arr
+  while !matches!(tokens[*index], Token::Ident(_)) {
+
+    match tokens[*index] {
+      Token::LeftBracket => {*index += 1;}
+      _ => {return Err(String::from("expected '['"));}
+    }
+
+    match tokens[*index] {
+      // If it is right bracket, we do not do anything and pass to next check point
+      Token::RightBracket => {}
+      // If it is number, we need to check if it is followed by an right bracket, which is same check point
+      Token::Num(_) => {*index += 1;}
+      _ => {return Err(String::from("expected ']' or number behind '['"));}
+    }
+
+    match tokens[*index] {
+      Token::RightBracket => {*index += 1;}
+      _ => {return Err(String::from("expected ']'"));}
+    }
+
+  }
+
+  match tokens[*index] {
+    Token::Ident(_) => {*index += 1;}
+    _ => {return Err(String::from("Declarations must have an identifier"));}
+  }
+
+  return Ok(());
+}
+
+//this function handles declarations inside the body of the function
 fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
   match tokens[*index] {
-  Token::Int => {*index += 1;}
-  _ => {return Err(String::from("Declaration statements must being with 'int' keyword"));}
+    Token::Int => {*index += 1;}
+    _ => {return Err(String::from("Declaration statements must being with 'int' keyword"));}
+  }
+
+  //add code that handles declarations such as int [8] arr
+  while !matches!(tokens[*index], Token::Ident(_)) {
+
+    match tokens[*index] {
+      Token::LeftBracket => {*index += 1;}
+      _ => {return Err(String::from("expected '['"));}
+    }
+
+    match tokens[*index] {
+      Token::RightBracket => {}
+      Token::Num(_) => {*index += 1;}
+      _ => {return Err(String::from("expected ']' or number behind '['"));}
+    }
+
+    match tokens[*index] {
+      Token::RightBracket => {*index += 1;}
+      _ => {return Err(String::from("expected ']'"));}
+    }
+
   }
 
   match tokens[*index] {
-  Token::Ident(_) => {*index += 1;}
-  _ => {return Err(String::from("Declarations must have an identifier"));}
+    Token::Ident(_) => {*index += 1;}
+    _ => {return Err(String::from("Declarations must have an identifier"));}
   }
 
   match tokens[*index] {
-  Token::Semicolon => {*index += 1;}
-  _ => {return Err(String::from("Statements must end with a semicolon"));}
+    Token::Semicolon => {*index += 1;}
+    _ => {return Err(String::from("Statements must end with a semicolon"));}
   }
 
   return Ok(());
