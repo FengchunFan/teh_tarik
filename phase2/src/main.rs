@@ -530,7 +530,7 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String>
   Token::Read => parse_read_statement(tokens, index),
   Token::Break => parse_break_statement(tokens, index),
   Token::Continue => parse_continue_statement(tokens, index),
-  Token::While => parse_while_loop(tokens, index),
+  Token::While => parse_while_statement(tokens, index),
   _ => Err(String::from("invalid statement"))
   }
 }
@@ -640,13 +640,14 @@ fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<
   return Ok(());
 }
 
-fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
+fn parse_while_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
   match tokens[*index] {
     Token::While => {*index += 1;}
     _ => {return Err(String::from("While statements must begin with a while keyword"));}
   }
 
-  //code that handles boolean expressions
+  // In while loop, we do not take in paren
+  // code that handles boolean expressions
   match parse_boolean_expression(tokens, index) {
     Ok(()) => {}
     Err(e) => {return Err(e);}
@@ -657,6 +658,7 @@ fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String
     _ => {return Err(String::from("Expected '{'"))}
   }
 
+  // We need at least 1 statement inside the while loop
   //code that handles statements
   match parse_statement(tokens, index) {
     Ok (()) => {}
