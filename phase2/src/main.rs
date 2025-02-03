@@ -531,6 +531,7 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String>
   Token::Break => parse_break_statement(tokens, index),
   Token::Continue => parse_continue_statement(tokens, index),
   Token::While => parse_while_statement(tokens, index),
+  Token::If => parse_if_statement(tokens, index),
   _ => Err(String::from("invalid statement"))
   }
 }
@@ -640,6 +641,76 @@ fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<
   return Ok(());
 }
 
+fn parse_if_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
+  match tokens[*index] {
+    Token::If => {*index += 1;}
+    _ => {return Err(String::from("If statements must begin with a if keyword"));}
+  }
+
+  // In if statement, we do not take in paren
+  // code that handles boolean expressions
+  match parse_boolean_expression(tokens, index) {
+    Ok(()) => {}
+    Err(e) => {return Err(e);}
+  }
+
+  match tokens[*index] {
+    Token::LeftCurly => {*index += 1;}
+    _ => {return Err(String::from("Expected '{' under if statement"))}
+  }
+
+  // We need at least 1 statement inside the Curly
+  //code that handles statements
+  match parse_statement(tokens, index) {
+    Ok (()) => {}
+    Err(e) => {return Err(e);}
+  }
+
+  while !matches!(tokens[*index], Token::RightCurly) {
+    match parse_statement(tokens, index) {
+      Ok(()) => {}
+      Err(e) => {return Err(e);}
+    }
+  }
+
+  match tokens[*index] {
+    Token::RightCurly => {*index += 1;}
+    _ => {return Err(String::from("Expected '}' under if statemetn"))}
+  }
+
+  // While there is a Else keyword
+  while matches!(tokens[*index], Token::Else) {
+    *index += 1;
+    // We check if there is {statement*}
+    match tokens[*index] {
+      Token::LeftCurly => {*index += 1;}
+      _ => {return Err(String::from("Expected '{' under else statement"))}
+    }
+
+    // We need at least 1 statement inside the Curly
+    //code that handles statements
+    match parse_statement(tokens, index) {
+      Ok (()) => {}
+      Err(e) => {return Err(e);}
+    }
+
+    while !matches!(tokens[*index], Token::RightCurly) {
+      match parse_statement(tokens, index) {
+        Ok(()) => {}
+        Err(e) => {return Err(e);}
+      }
+    }
+
+    match tokens[*index] {
+      Token::RightCurly => {*index += 1;}
+      _ => {return Err(String::from("Expected '}' under else statement"))}
+    }
+  }
+
+
+  return Ok(());
+}
+
 fn parse_while_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
   match tokens[*index] {
     Token::While => {*index += 1;}
@@ -655,7 +726,7 @@ fn parse_while_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), S
 
   match tokens[*index] {
     Token::LeftCurly => {*index += 1;}
-    _ => {return Err(String::from("Expected '{'"))}
+    _ => {return Err(String::from("Expected '{' under while statement"))}
   }
 
   // We need at least 1 statement inside the while loop
@@ -674,7 +745,7 @@ fn parse_while_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), S
 
   match tokens[*index] {
     Token::RightCurly => {*index += 1;}
-    _ => {return Err(String::from("Expected '}'"))}
+    _ => {return Err(String::from("Expected '}' under while statement"))}
   }
 
   return Ok(());
