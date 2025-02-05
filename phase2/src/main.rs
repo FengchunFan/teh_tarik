@@ -616,11 +616,57 @@ fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result
   return Ok(());
 }
 
+fn parse_var(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
+  match tokens[*index] {
+    // Start of var must be an identifier identifier
+    Token::Ident(_) => {
+      *index += 1;
+      match tokens[*index] {
+        // Under Identifier, if it follows a left bracket
+        // Ident -> [ Expression ] ...
+        Token::LeftBracket => {
+          loop {
+            match tokens[*index] {
+              Token::LeftBracket => {*index += 1;}
+              // Break and return if we dont find left bracket
+              _ => { break; }
+            }
+
+            match parse_expression(tokens, index) {
+              Ok(()) => {},
+              Err(e) => {return Err(e);}
+            }
+
+            match tokens[*index] {
+              Token::RightBracket => {*index += 1;}
+              _ => { return Err(String::from("var missing left bracket ']'")); }
+            }
+          }
+        }
+        
+        // If we see other characters, that is not part of this var
+        // Identifier itself is a valid var
+        _ => {
+          // Do not do anything
+        }
+      }      
+      return Ok(());
+    }
+    
+    // Else, it idicates a missing identifier in var
+    _ => {
+      return Err(String::from("missing identifier in var"));
+    }
+
+  }
+}
+
+// Var = Expression
 fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
   //I might need to change this to match variable_expression instead of an ident(_)
-  match tokens[*index] {
-    Token::Ident(_) => {*index += 1;}
-    _ => {return Err(String::from("Assignment statements must being with an identifier"));}
+  match parse_var(tokens, index) {
+    Ok(()) => {},
+    Err(e) => {return Err(e);}
   }
 
   match tokens[*index] {
