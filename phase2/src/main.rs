@@ -532,7 +532,7 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String>
   Token::Continue => parse_continue_statement(tokens, index),
   Token::While => parse_while_statement(tokens, index),
   Token::If => parse_if_statement(tokens, index),
-  _ => Err(String::from("invalid statement"))
+  _ => Err(String::from("invalid or empty statement"))
   }
 }
 
@@ -984,17 +984,77 @@ fn parse_multiply_expression(tokens: &Vec<Token>, index: &mut usize) -> Result<(
 // a term is either a Nummber or an Identifier
 fn parse_term(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
   match tokens[*index] {
-  
-    Token::Ident(_) => {
-      *index += 1;
-      return Ok(());
-    }
-
+    // If it is number return immediately
     Token::Num(_) => {
       *index += 1;
       return Ok(());
     }
 
+    // If it is identifier
+    Token::Ident(_) => {
+      *index += 1;
+      match tokens[*index] {
+        // Under Identifier, if it follows a left bracket
+        // Ident -> [ Expression ] ...
+        Token::LeftBracket => {
+          loop {
+            match tokens[*index] {
+              Token::LeftBracket => {*index += 1;}
+              // Break and return if we dont find left bracket
+              _ => { break; }
+            }
+
+            match parse_expression(tokens, index) {
+              Ok(()) => {},
+              Err(e) => {return Err(e);}
+            }
+
+            match tokens[*index] {
+              Token::RightBracket => {*index += 1;}
+              _ => { return Err(String::from("term missing left bracket ']'")); }
+            }
+          }
+        }
+        // Under Identifier, if it follows a left Parenthesis
+        // Identifier (Expression(, Expression)*)
+        Token::LeftParen => {
+          // We have start with a left parenthesis and a expression
+          match tokens[*index] {
+            Token::LeftParen => {*index += 1;}
+            _ => {return Err(String::from("term missing left parenthesis ')'"));}
+          }
+          match parse_expression(tokens, index) {
+            Ok(()) => {},
+            Err(e) => {return Err(e);}
+          }
+          
+          // If there are more expressions between parenthesis
+          // It must start with a comma
+          // Else, it will be checked and throw an error in the next check point
+          while matches!(tokens[*index], Token::Comma) {
+            *index += 1;
+            // Then we can parse another expressino
+            match parse_expression(tokens, index) {
+              Ok(()) => {},
+              Err(e) => {return Err(e);}
+            }
+          }
+
+          match tokens[*index] {
+            Token::RightParen => {*index += 1;}
+            _ => { return Err(String::from("term missing right parenthesis ')'")); }
+          }
+        }
+        // If we see other characters, that is not part of this term
+        // Identifier itself is a valid term
+        _ => {
+          // Do not do anything
+        }
+      }      
+      return Ok(());
+    }
+
+    // ( Expression )
     Token::LeftParen => {
       *index += 1;
       match parse_expression(tokens, index) {
@@ -1008,7 +1068,8 @@ fn parse_term(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
       }
       return Ok(());
     }
-
+    
+    // Else, it idicates a missing term
     _ => {
       return Err(String::from("missing expression term."));
     }
