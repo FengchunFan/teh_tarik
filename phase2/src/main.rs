@@ -49,6 +49,18 @@ fn main() {
     
     };
 
+    // print out the lexer tokens parsed.
+
+    println!("----------------------");
+    println!("Finished Lexing the file {}", filename);
+    println!("File Contents:");
+    println!("{code}");
+    println!("Here are the Results:");
+    println!("----------------------");
+    for t in &tokens {
+      println!("{:?}", t);
+    }
+
     // phase2 code in main
     let mut index: usize = 0;
     match parse_program(&tokens, &mut index) {
@@ -70,19 +82,6 @@ fn main() {
 
     }
     //end of phase2 code in main
-
-    // print out the lexer tokens parsed.
-
-    println!("----------------------");
-    println!("Finished Lexing the file {}", filename);
-    println!("File Contents:");
-    println!("{code}");
-    println!("Here are the Results:");
-    println!("----------------------");
-    for t in &tokens {
-      println!("{:?}", t);
-    }
-
 }
 
 // Creating an Enum within Rust.
