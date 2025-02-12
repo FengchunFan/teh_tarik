@@ -40,7 +40,7 @@ fn main() {
     Err(error_message) => {
         println!("**Error**");
         println!("----------------------");
-        println!("{}", error_message);
+        println!("Lexer Error: {}", error_message);
         println!("----------------------");
         return;
     }
@@ -63,7 +63,7 @@ fn main() {
       if tokens.len() == 0 {
         println!("No code has been provided.");
       } else {
-          println!("Error: {message}");
+          println!("Parser Error: {message}");
           println!("----------------------");
       }
     }
@@ -1057,7 +1057,7 @@ fn parse_term(tokens: &Vec<Token>, index: &mut usize) -> Result<(), String> {
 
             match tokens[*index] {
               Token::RightBracket => {*index += 1;}
-              _ => { return Err(String::from("term missing left bracket ']'")); }
+              _ => { return Err(String::from("term missing right bracket ']'")); }
             }
           }
         }
