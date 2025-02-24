@@ -533,6 +533,8 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Str
     Token::Return => parse_return_statement(tokens, index),
     Token::Print => parse_print_statement(tokens, index),
     Token::Read => parse_read_statement(tokens, index),
+    // Token::Break => parse_break_statement(tokens, index),
+    // Token::Continue => parse_continue_statement(tokens, index),
     _ => Err(String::from("invalid statement"))
     }
 }
@@ -622,16 +624,73 @@ fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result
     return Ok(statement);
 }
 
+fn parse_var(tokens: &Vec<Token>, index: &mut usize) -> Result<Expression, String> {
+  // initialize empty expression
+  let mut var_statement = Expression {
+      name: String::new(),
+      code: String::new(),
+  };
+  let dest: String;
+
+  match &tokens[*index] {
+    // Start of var must be an identifier
+    Token::Ident(ident) => {
+      *index += 1;
+      // Get a copy of the identifier
+      dest = ident.clone();
+      match tokens[*index] {
+        // Under Identifier, if it follows a left bracket
+        // Ident -> [ Expression ] ...
+        Token::LeftBracket => {
+          *index += 1;
+
+          match parse_expression(tokens, index) {
+            Ok(expression) => {
+                let src = expression.name;
+                // Append the previous expression code first
+                var_statement.code = expression.code;
+                var_statement.name = format!("[array + {}]", src);
+            },
+            Err(e) => {return Err(e);}
+          }
+
+          match tokens[*index] {
+            Token::RightBracket => {*index += 1;}
+            _ => { return Err(String::from("var missing right bracket ']'")); }
+          }
+        }
+        
+        // If we see other characters, that is not part of this var
+        // Identifier itself is a valid var
+        _ => {
+          // Take the identifier as name
+          // Leave the code field empty
+          var_statement.name = dest;
+        }
+      }      
+      return Ok(var_statement);
+    }
+    
+    // Else, it idicates a missing identifier in var
+    _ => {
+      return Err(String::from("missing identifier in var"));
+    }
+
+  }
+}
+
 fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
-    let mut statement: String;
+    let mut statement = String::new();
 
     let dest: String;
-    match &tokens[*index] {
-    Token::Ident(ident) => {
-        *index += 1;
-        dest = ident.clone(); // copy ident into variable.
-    }
-    _ => {return Err(String::from("Assignment statements must being with an identifier"));}
+    // Get the dest (left part)
+    match parse_var(tokens, index) {
+      Ok(var_statement) => {
+        // This is because expression is involved in parse_var
+        statement += &var_statement.code;
+        dest = var_statement.name;
+      },
+      Err(e) => {return Err(e);}
     }
 
     match tokens[*index] {
@@ -642,7 +701,7 @@ fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<
     match parse_expression(tokens, index) {
     Ok(expression) => {
         let src = expression.name;
-        statement = expression.code;
+        statement += &expression.code;
         statement += &format!("%mov {dest}, {src}\n");
     },
     Err(e) => {return Err(e);}
@@ -657,13 +716,16 @@ fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<
 }
 
 fn parse_return_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+    let expression: Expression;
     match tokens[*index] {
     Token::Return => {*index += 1;}
     _ => {return Err(String::from("Return statements must being with a return keyword"));}
     }
 
     match parse_expression(tokens, index) {
-    Ok(_) => {},
+    Ok(expr) => {
+      expression = expr;
+    },
     Err(e) => {return Err(e);}
     }
 
@@ -672,7 +734,9 @@ fn parse_return_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<Stri
     _ => {return Err(String::from("Statement is missing the ';' semicolon"));}
     }
 
-    todo!()
+    let mut statement = expression.code;
+    statement += &format!("%ret {}\n", expression.name);
+    return Ok(statement);
 }
 
 fn parse_print_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
@@ -700,13 +764,16 @@ fn parse_print_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<Strin
 }
 
 fn parse_read_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+    let expression: Expression;
     match tokens[*index] {
     Token::Read => {*index += 1;}
     _ => {return Err(String::from("Read statements must being with a 'read' keyword"));}
     }
 
     match parse_expression(tokens, index) {
-    Ok(_) => {},
+    Ok(expr) => {
+      expression = expr;
+    },
     Err(e) => {return Err(e);}
     }
     match tokens[*index] {
@@ -714,7 +781,9 @@ fn parse_read_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String
     _ => {return Err(String::from("Statement is missing the ';' semicolon"));}
     }
 
-    todo!()
+    let mut statement = expression.code;
+    statement += &format!("%input {}\n", expression.name);
+    return Ok(statement);
 }
 
 // parsing complex expressions such as: "a + b - (c * d) / (f + g - 8);
@@ -755,7 +824,7 @@ fn parse_expression(tokens: &Vec<Token>, index: &mut usize) -> Result<Expression
                let dest = create_temp();
                expression.code += &expr2.code;
                expression.code += &format!("%int {dest}\n");
-               expression.code += &format!("%add {dest}, {src1}, {src2}\n");
+               expression.code += &format!("%sub {dest}, {src1}, {src2}\n");
                expression.name = dest;
            },
            Err(e) => {return Err(e);}
