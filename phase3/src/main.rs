@@ -34,7 +34,7 @@ fn main() {
     Err(error_message) => {
         println!("**Error**");
         println!("----------------------");
-        println!("{}", error_message);
+        println!("Lexer Error: {}", error_message);
         println!("----------------------");
         return;
     }
@@ -60,7 +60,7 @@ fn main() {
         if tokens.len() == 0 {
             println!("No code has been provided.");
         } else {
-            println!("Error: {message}");
+            println!("Parser Error: {message}");
             println!("----------------------");
         }
     }
@@ -68,35 +68,40 @@ fn main() {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Token {
-  // keywords:
   Func,
   Return,
   Int,
   Print,
-  While,
   Read,
+  While,
   If,
-
+  Else,
+  Break,
+  Continue,
   LeftParen,
   RightParen,
   LeftCurly,
   RightCurly,
+  LeftBracket,
+  RightBracket,
   Comma,
   Semicolon,
-
-  // mathematical operators.
   Plus,
   Subtract,
   Multiply,
   Divide,
   Modulus,
   Assign,
-
-  Ident(String),
+  Less,
+  LessEqual,
+  Greater,
+  GreaterEqual,
+  Equality,
+  NotEqual,
   Num(i32),
-
+  Ident(String),
   End,
 }
 
@@ -116,6 +121,8 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
 
     match c {
 
+    // Digits
+    // If characters among digits, return error message
     '0'..='9' => {
       let start = i;
       i += 1;
@@ -123,8 +130,21 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
         let digit = bytes[i] as char;
         if digit >= '0' && digit <= '9' {
           i += 1;
-        } else {
+        } else if digit == ' ' || digit == '\n' {
+          // If reached here, means all digits until space or newline
           break;
+        } else if digit == '(' || digit == ')' || digit == '{' || digit == '}' || digit == '[' || digit == ']'{
+          // If reached here, similar logic as above, all digits are legal until meeting a type of bracket
+          break;
+        } else if digit == ',' || digit == ';'{
+          // If reached here, similar logic as above, all digits are legal until meeting a type of comma
+          break;
+        } else {
+          // If current character is a alphabet or any other unrecognized character
+          // Return error message
+          let end = i+1;
+          let string_token = &code[start..end]; 
+          return Err(format!("Detect invalid identifier {}", string_token));
         }
       }
       let end = i;
@@ -133,100 +153,235 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
       let token = Token::Num(number_value);
       tokens.push(token);
     }
-
+   
+    // Characters
+    // If character-made string does not match any keywords
+    // It is considered a Identifier
     'a'..='z' | 'A'..='Z' => {
       let start = i;
       i += 1;
       while i < bytes.len() {
-        let letter = bytes[i] as char;
-        if (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') || (letter >= '0' && letter <= '9') {
+        let curr = bytes[i] as char;
+        // Variables begin with an upper or lower case letters A-Z followed by a sequence of underscores or numbers.
+        // reference: https://stackoverflow.com/questions/29873569/check-whether-a-char-is-a-letter-or-a-number
+        if curr.is_alphanumeric() || curr == '_'{
           i += 1;
-        } else {
+        } else if curr == ' ' || curr == '\n' {
+          // If reached here, means all characters are legal until space or newline
           break;
+        } else if curr == '(' || curr == ')' || curr == '{' || curr == '}' || curr == '[' || curr == ']'{
+          // If reached here, similar logic as above, all characters are legal until meeting a type of bracket
+          break;
+        } else if curr == ',' || curr == ';'{
+          // If reached here, similar logic as above, all characters are legal until meeting a type of comma
+          break;
+        } else {
+          // If current character is a unrecognized, return error message
+          let end = i+1;
+          let string_token = &code[start..end]; 
+          return Err(format!("Detect invalid identifier {}", string_token));
         }
       }
       let end = i;
       let string_token = &code[start..end];
-      let token = create_identifier(string_token);
-      tokens.push(token);
+      // Check if this parsed string is a predefined keyword
+      match string_token {
+        "func" => {
+          tokens.push(Token::Func);
+        }
+        "return" => {
+          tokens.push(Token::Return);
+        }
+        "int" => {
+          tokens.push(Token::Int);
+        }
+        "print" => {
+          tokens.push(Token::Print);
+        }
+        "read" => {
+          tokens.push(Token::Read);
+        }
+        "while" => {
+          tokens.push(Token::While);
+        }
+        "if" => {
+          tokens.push(Token::If);
+        }
+        "else" => {
+          tokens.push(Token::Else);
+        }
+        "break" => {
+          tokens.push(Token::Break);
+        }
+        "continue" => {
+          tokens.push(Token::Continue);
+        }
+        // Else, it is a identifier
+        _ => {
+          // change &str -> String
+          let token = Token::Ident(string_token.to_string());
+          tokens.push(token);
+        }
+      }
     }
 
+    // Simple symbols
+    // No need further clarification
     '+' => {
       tokens.push(Token::Plus);
       i += 1;
     }
-
     '-' => {
       tokens.push(Token::Subtract);
       i += 1;
     }
-
     '*' => {
       tokens.push(Token::Multiply);
       i += 1;
     }
-
     '/' => {
       tokens.push(Token::Divide);
       i += 1;
     }
-
+    '(' => {
+      tokens.push(Token::LeftParen);
+      i += 1;
+    }
+    ')' => {
+      tokens.push(Token::RightParen);
+      i += 1;
+    }
+    '{' => {
+      tokens.push(Token::LeftCurly);
+      i += 1;
+    }
+    '}' => {
+      tokens.push(Token::RightCurly);
+      i += 1;
+    }
+    '[' => {
+      tokens.push(Token::LeftBracket);
+      i += 1;
+    }
+    ']' => {
+      tokens.push(Token::RightBracket);
+      i += 1;
+    }
+    ',' => {
+      tokens.push(Token::Comma);
+      i += 1;
+    }
+    ';' => {
+      tokens.push(Token::Semicolon);
+      i += 1;
+    }
     '%' => {
       tokens.push(Token::Modulus);
       i += 1;
     }
 
-    '=' => {
-      tokens.push(Token::Assign);
+    // Special symbols
+    // Need to check the next character behind the current character
+    '>' => {
       i += 1;
-    }
-
-    ';' => {
-      tokens.push(Token::Semicolon);
-      i += 1;
-    }
-
-    '(' => {
-      tokens.push(Token::LeftParen);
-      i += 1;
-    }
-
-    ')' => {
-      tokens.push(Token::RightParen);
-      i += 1;
-    }
-
-    '{' => {
-      tokens.push(Token::LeftCurly);
-      i += 1;
-    }
-
-    '}' => {
-      tokens.push(Token::RightCurly);
-      i += 1;
-    }
-
-    ',' => {
-      tokens.push(Token::Comma);
-      i += 1;
-    }
-
-    '#' => {
-      i += 1;
-      while i < bytes.len() {
-        let c = bytes[i] as char;
-        if c == '\n' {
-          i += 1;
-          break;
+      // If this is the end of the string
+      if i >= bytes.len(){
+        tokens.push(Token::Greater);      
+      } else {
+        // Insert token based on what is next character
+        let curr = bytes[i] as char;
+        match curr {
+          '=' => {
+            tokens.push(Token::GreaterEqual);
+            i += 1;
+          }
+          _ => {
+            tokens.push(Token::Greater);
+          }
         }
-        i += 1;
+      }
+    }
+    '<' => {
+      i += 1;
+      // If this is the end of the string
+      if i >= bytes.len(){
+        tokens.push(Token::Less);
+      } else {
+        // Insert token based on what is next character
+        let curr = bytes[i] as char;
+        match curr {
+          '=' => {
+            tokens.push(Token::LessEqual);
+            i += 1;
+          }
+          _ => {
+            tokens.push(Token::Less);
+          }
+        }
+      }
+    }
+    '=' => {
+      i += 1;
+      // If this is the end of the string
+      if i >= bytes.len(){
+        tokens.push(Token::Assign);
+      } else {
+        // Insert token based on what is next character
+        let curr = bytes[i] as char;
+        match curr {
+          '=' => {
+            tokens.push(Token::Equality);
+            i += 1;
+          }
+          _ => {
+            tokens.push(Token::Assign);
+          }
+        }
+      }
+    }
+    '!' => {
+      i += 1;
+      // If this is the end of the string
+      if i >= bytes.len(){
+        // '!' itself is not recognized
+        return Err(format!("Unrecognized symbol '!'"));
+      } else {
+        // Insert token based on what is next character
+        let curr = bytes[i] as char;
+        match curr {
+          '=' => {
+            tokens.push(Token::NotEqual);
+            i += 1;
+          }
+          _ => {
+            return Err(format!("Unrecognized symbol '!'"));
+          }
+        }
       }
     }
 
+    // Comment
+    // We will ignore all characters following '#' until newline (\n)
+    '#' => {
+      i += 1;
+      while i < bytes.len(){
+        let curr = bytes[i] as char;
+        if curr != '\n'{
+          i += 1;
+        } else {
+          i += 1;
+          break;
+        }
+      }
+    }
+
+    // Space or newline
     ' ' | '\n' => {
       i += 1;
     }
-
+    
+    // If other characters encountered
+    // Return error message
     _ => {
       return Err(format!("Unrecognized symbol '{}'", c));
     }
@@ -236,19 +391,6 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
 
   tokens.push(Token::End);
   return Ok(tokens);
-}
-
-fn create_identifier(code: &str) -> Token {
-  match code {
-  "func" => Token::Func,
-  "return" => Token::Return,
-  "int" => Token::Int,
-  "print" => Token::Print,
-  "read" => Token::Read,
-  "while" => Token::While,
-  "if" => Token::If,
-  _ => Token::Ident(String::from(code)),
-  }
 }
 
 // parse programs with multiple functions
@@ -304,7 +446,7 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
     match &tokens[*index] {
     Token::Ident(ident) => {
         *index += 1;
-        function_code = format!("%func {ident}\n");
+        function_code = format!("%func {ident}");
     }
     _  => { return Err(String::from("functions must have a function identifier"));}
     }
@@ -315,8 +457,40 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
     _ => { return Err(String::from("expected '('"));}
     }
 
+    // If there is a declaration in the function
+    // Then we go into the loop
+    while !matches!(tokens[*index], Token::RightParen) {
+      // We need to first match an declaration
+      match parse_declaration(tokens, index) {
+        Ok(statement) => {
+          function_code += "(";
+          function_code += &statement;
+        }
+        Err(e) => {return Err(e);}
+      }
+      // While there is Comma
+      while matches!(tokens[*index], Token::Comma) {
+        // We pass forward from the Comma and check one additional declaration
+        function_code += ", ";
+        *index += 1;
+        match parse_declaration(tokens, index) {
+          Ok(statement) => {
+            function_code += &statement;
+          }
+          Err(e) => {return Err(e);}
+        }
+      }
+
+      // When there are no more parameters
+      function_code += ")";
+      break;
+    }
+
     match tokens[*index] {
-    Token::RightParen => { *index += 1; }
+    Token::RightParen => { 
+      *index += 1; 
+      function_code += "\n";
+    }
     _ => { return Err(String::from("expected ')'"));}
     }
 
@@ -328,7 +502,8 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
     while !matches!(tokens[*index], Token::RightCurly) {
         match parse_statement(tokens, index) {
         Ok(statement_code) => {
-            function_code += &statement_code;
+          // Each statement should contain a newline itself
+          function_code += &statement_code;
         }
         Err(e) => {return Err(e);}
         }
@@ -362,7 +537,8 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Str
     }
 }
 
-fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+// In this phase, we do not pass in array as parameter
+fn parse_declaration(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
 
     let statement: String;
 
@@ -374,7 +550,66 @@ fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result
     match &tokens[*index] {
     Token::Ident(ident) => {
         *index += 1;
-        statement = format!("%int {ident}\n");
+        statement = format!("%int {ident}");
+    }
+    _ => {return Err(String::from("Declarations must have an identifier"));}
+    }
+
+    return Ok(statement);
+}
+
+fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+
+    // Since there are multiple ways statement might be assigned
+    let mut statement = String::new();
+    //let statement: String;
+
+    match tokens[*index] {
+    Token::Int => {*index += 1;}
+    _ => {return Err(String::from("Declaration statements must being with 'int' keyword"));}
+    }
+
+    // Boolean to check if we are dealing with variable
+    let mut is_variable = true;
+    // Variable to store array size if applicable
+    // let mut number = 0;
+
+    // If it is an identifier, we can just pass forward
+    // add code that handles declarations such as int [8] arr
+    while !matches!(tokens[*index], Token::Ident(_)) {
+      is_variable = false;
+      match tokens[*index] {
+        Token::LeftBracket => {*index += 1;}
+        _ => {return Err(String::from("expected '['"));}
+      }
+
+      match tokens[*index] {
+        // If it is right bracket, we do not do anything and pass to next check point
+        Token::RightBracket => {}
+        // If it is number, we need to check if it is followed by an right bracket, which is same check point
+        Token::Num(num) => {
+          *index += 1;
+          // number = num;
+          statement = format!("%int[] array, {num}\n");
+        }
+        _ => {return Err(String::from("expected ']' or number behind '['"));}
+      }
+
+      match tokens[*index] {
+        Token::RightBracket => {*index += 1;}
+        _ => {return Err(String::from("expected ']'"));}
+      }
+
+    }
+
+    match &tokens[*index] {
+    Token::Ident(ident) => {
+        *index += 1;
+        if is_variable {
+          statement = format!("%int {ident}\n");
+        // } else {
+        //   statement = format!("%int[] {ident}, {number}\n");
+        // }
     }
     _ => {return Err(String::from("Declarations must have an identifier"));}
     }
