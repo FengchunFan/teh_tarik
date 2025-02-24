@@ -609,7 +609,7 @@ fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result
           statement = format!("%int {ident}\n");
         // } else {
         //   statement = format!("%int[] {ident}, {number}\n");
-        // }
+        }
     }
     _ => {return Err(String::from("Declarations must have an identifier"));}
     }
