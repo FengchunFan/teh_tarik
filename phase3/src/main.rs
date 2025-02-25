@@ -586,8 +586,10 @@ fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result
       }
 
       match tokens[*index] {
-        // If it is right bracket, we do not do anything and pass to next check point
-        Token::RightBracket => {}
+        // If it is right bracket, we are missing the array size
+        Token::RightBracket => {
+          return Err(String::from("missing array size"));
+        }
         // If it is number, we need to check if it is followed by an right bracket, which is same check point
         Token::Num(num) => {
           *index += 1;
@@ -1037,4 +1039,3 @@ fn parse_term(tokens: &Vec<Token>, index: &mut usize) -> Result<Expression, Stri
 
     }
 }
-
