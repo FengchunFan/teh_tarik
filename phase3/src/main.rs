@@ -702,7 +702,12 @@ fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<
     Ok(expression) => {
         let src = expression.name;
         statement += &expression.code;
-        statement += &format!("%mov {dest}, {src}\n");
+        // Check if the expression is a function call
+        if src.contains("(") && src.contains(")") {
+          statement += &format!("%call {dest}, {src}\n");
+        } else {
+          statement += &format!("%mov {dest}, {src}\n");
+        }
     },
     Err(e) => {return Err(e);}
     }
@@ -759,7 +764,11 @@ fn parse_print_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<Strin
     }
 
     let mut statement = expression.code;
-    statement += &format!("%out {}\n", expression.name);
+    let src1 = expression.name;
+    let dest = create_temp();
+    statement += &format!("%int {dest}\n");
+    statement += &format!("%mov {}, {}\n", dest, src1);
+    statement += &format!("%out {dest}\n");
     return Ok(statement);
 }
 
@@ -915,15 +924,7 @@ fn parse_multiply_expression(tokens: &Vec<Token>, index: &mut usize) -> Result<E
 fn parse_term(tokens: &Vec<Token>, index: &mut usize) -> Result<Expression, String> {
     match &tokens[*index] {
 
-    Token::Ident(identifier) => {
-        *index += 1;
-        let expression = Expression {
-            code : String::from(""),
-            name : identifier.clone()
-        };
-        return Ok(expression);
-    }
-
+    // If just a number, return immediately
     Token::Num(number) => {
         *index += 1;
         let expression = Expression {
@@ -933,6 +934,87 @@ fn parse_term(tokens: &Vec<Token>, index: &mut usize) -> Result<Expression, Stri
         return Ok(expression);
     }
 
+    // If it is identifier
+    Token::Ident(identifier) => {
+      *index += 1;
+      let mut expression = Expression {
+        code: String::new(),
+        name: identifier.clone(),
+      };
+      match tokens[*index] {
+        // Under Identifier, if it follows a left bracket
+        // Ident -> [ Expression ] ...
+        Token::LeftBracket => {
+          *index += 1;
+            
+          // Using temp here to avoid %add _temp4, [array + 0], [array + 0]
+          match parse_expression(tokens, index) {
+            Ok(inner_expr) => {
+              let src1 = format!("[{} + {}]", identifier, inner_expr.name);
+              let dest = create_temp();
+              expression.code += &format!("%int {dest}\n");
+              expression.code += &format!("%mov {}, {}\n", dest, src1);
+              expression.name = dest;
+            },
+            Err(e) => {return Err(e);}
+          }
+
+           match tokens[*index] {
+            Token::RightBracket => {*index += 1;}
+            _ => { return Err(String::from("term missing right bracket ']'")); }
+          }
+          
+        }
+        // Under Identifier, if it follows a left Parenthesis
+        // Identifier (Expression(, Expression)*)
+        Token::LeftParen => {
+          // We have start with a left parenthesis and a expression
+          *index += 1;
+          // Collect function arguments.
+          let mut args = Vec::new();
+
+          // Push the collected argument
+          match parse_expression(tokens, index) {
+            Ok(inner_expr) => {
+              expression.code += &inner_expr.code;
+              args.push(inner_expr.name);
+            },
+            Err(e) => {return Err(e);}
+          }
+          
+          // If there are more expressions between parenthesis
+          // It must start with a comma
+          // Else, it will be checked and throw an error in the next check point
+          while matches!(tokens[*index], Token::Comma) {
+            *index += 1;
+            // Then we can parse another expressino
+            match parse_expression(tokens, index) {
+              Ok(inner_expr) => {
+                expression.code += &inner_expr.code;
+                args.push(inner_expr.name);
+              },
+              Err(e) => {return Err(e);}
+            }
+          }
+
+          match tokens[*index] {
+            Token::RightParen => {*index += 1;}
+            _ => { return Err(String::from("term missing right parenthesis ')'")); }
+          }
+
+          // Format the expression name
+          expression.name = format!("{}({})", identifier, args.join(","));
+        }
+        // If we see other characters, that is not part of this term
+        // Identifier itself is a valid term
+        _ => {
+          // Do not do anything
+        }
+      }      
+      return Ok(expression);
+    }
+
+    // ( Expression )
     Token::LeftParen => {
         *index += 1;
         let expression: Expression;
@@ -948,6 +1030,7 @@ fn parse_term(tokens: &Vec<Token>, index: &mut usize) -> Result<Expression, Stri
         return Ok(expression);
     }
     
+    // Missing term
     _ => {
         return Err(String::from("missing expression term."));
     }
