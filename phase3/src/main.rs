@@ -393,6 +393,15 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
   return Ok(tokens);
 }
 
+fn find_symbol(symbol_table: &Vec<(String, String)>, symbol: &String) -> bool {
+    for (symbol_in_table, _) in symbol_table{
+        if symbol_in_table.eq(symbol){
+            return true;
+        }
+    }
+    return false;
+}
+
 // parse programs with multiple functions
 // loop over everything, outputting generated code.
 fn parse_program(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
@@ -442,10 +451,17 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
     }
 
     let mut function_code: String;
+    //let mut symbol_table: Vec<String> = vec![];
+    let mut symbol_table: Vec<(String, String)> = vec![];
 
     match &tokens[*index] {
     Token::Ident(ident) => {
         *index += 1;
+        // if identifier has been previously declared, return error
+        if find_symbol(&symbol_table, ident){
+            return Err(format!("Error, found duplicating function name {ident}"));
+        }
+        symbol_table.push((ident.clone(), "int".to_string()));
         function_code = format!("%func {ident}");
     }
     _  => { return Err(String::from("functions must have a function identifier"));}
@@ -461,7 +477,7 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
     // Then we go into the loop
     while !matches!(tokens[*index], Token::RightParen) {
       // We need to first match an declaration
-      match parse_declaration(tokens, index) {
+      match parse_declaration(tokens, index, &mut symbol_table) {
         Ok(statement) => {
           function_code += "(";
           function_code += &statement;
@@ -473,7 +489,7 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
         // We pass forward from the Comma and check one additional declaration
         function_code += ", ";
         *index += 1;
-        match parse_declaration(tokens, index) {
+        match parse_declaration(tokens, index, &mut symbol_table) {
           Ok(statement) => {
             function_code += &statement;
           }
@@ -500,7 +516,7 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
     }
 
     while !matches!(tokens[*index], Token::RightCurly) {
-        match parse_statement(tokens, index) {
+        match parse_statement(tokens, index, &mut symbol_table) {
         Ok(statement_code) => {
           // Each statement should contain a newline itself
           function_code += &statement_code;
@@ -526,9 +542,9 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
 // print(a)
 // read(a)
 // returns epsilon if '}'
-fn parse_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>) -> Result<String, String> {
     match tokens[*index] {
-    Token::Int => parse_declaration_statement(tokens, index),
+    Token::Int => parse_declaration_statement(tokens, index, symbol_table),
     Token::Ident(_) => parse_assignment_statement(tokens, index),
     Token::Return => parse_return_statement(tokens, index),
     Token::Print => parse_print_statement(tokens, index),
@@ -540,7 +556,7 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Str
 }
 
 // In this phase, we do not pass in array as parameter
-fn parse_declaration(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+fn parse_declaration(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>) -> Result<String, String> {
 
     let statement: String;
 
@@ -551,6 +567,11 @@ fn parse_declaration(tokens: &Vec<Token>, index: &mut usize) -> Result<String, S
 
     match &tokens[*index] {
     Token::Ident(ident) => {
+        // if identifier has been previously declared, return error
+        if find_symbol(&symbol_table, ident){
+            return Err(format!("Error, found duplicating declaration inside function {ident}"));
+        }
+        symbol_table.push((ident.clone(), "int".to_string()));
         *index += 1;
         statement = format!("%int {ident}");
     }
@@ -560,7 +581,7 @@ fn parse_declaration(tokens: &Vec<Token>, index: &mut usize) -> Result<String, S
     return Ok(statement);
 }
 
-fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>) -> Result<String, String> {
 
     // Since there are multiple ways statement might be assigned
     let mut statement = String::new();
@@ -614,10 +635,15 @@ fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result
     match &tokens[*index] {
     Token::Ident(ident) => {
         *index += 1;
+        // if identifier has been previously declared, return error
+        if find_symbol(&symbol_table, ident){
+            return Err(format!("Error, found duplicating declaration inside statement {ident}"));
+        }
         if is_variable {
           statement = format!("%int {ident}\n");
-        // } else {
-        //   statement = format!("%int[] {ident}, {number}\n");
+          symbol_table.push((ident.clone(), "int".to_string()));
+        } else {
+          symbol_table.push((ident.clone(), "array".to_string()));
         }
     }
     _ => {return Err(String::from("Declarations must have an identifier"));}
