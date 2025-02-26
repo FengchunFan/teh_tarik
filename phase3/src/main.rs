@@ -592,9 +592,14 @@ fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize) -> Result
         }
         // If it is number, we need to check if it is followed by an right bracket, which is same check point
         Token::Num(num) => {
-          *index += 1;
-          // number = num;
-          statement = format!("%int[] array, {num}\n");
+          // Array size must not be less or equal to 0
+          if num <= 0 {
+            return Err(String::from("array size is less or equal to 0"));
+          } else {
+            *index += 1;
+            // number = num;
+            statement = format!("%int[] array, {num}\n");
+          }
         }
         _ => {return Err(String::from("expected ']' or number behind '['"));}
       }
