@@ -393,6 +393,27 @@ fn lex(code: &str) -> Result<Vec<Token>, String> {
   return Ok(tokens);
 }
 
+// Helper function to check if given function name is in function table
+fn find_func_name(func_table: &Vec<String>, func_name: &String) -> bool {
+    for func_name_in_table in func_table{
+        if func_name_in_table.eq(func_name){
+            return true;
+        }
+    }
+    return false;
+}
+
+// Helper function to check if main function is in the function table
+fn has_main(func_table: &Vec<String>) -> bool {
+    for func_name_in_table in func_table{
+        if func_name_in_table.eq("main"){
+            return true;
+        }
+    }
+    return false;
+}
+
+// Helper function to check if given symbol is in symbol table
 fn find_symbol(symbol_table: &Vec<(String, String)>, symbol: &String) -> bool {
     for (symbol_in_table, _) in symbol_table{
         if symbol_in_table.eq(symbol){
@@ -402,19 +423,37 @@ fn find_symbol(symbol_table: &Vec<(String, String)>, symbol: &String) -> bool {
     return false;
 }
 
+// Helper function to return the type of given symbol
+fn find_type(symbol_table: &Vec<(String, String)>, symbol: &String) -> String {
+    for (symbol_in_table, symbol_type) in symbol_table{
+        if symbol_in_table.eq(symbol){
+            return symbol_type.clone();
+        }
+    }
+    // Won't reach here
+    panic!("Error: Symbol '{}' not found!", symbol);
+}
+
 // parse programs with multiple functions
 // loop over everything, outputting generated code.
 fn parse_program(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
     assert!(tokens.len() >= 1 && matches!(tokens[tokens.len() - 1], Token::End));
 
     let mut code = String::new();
+    // Function name table
+    let mut func_table: Vec<String> = vec![];
     while !at_end(tokens, *index) {
-      match parse_function(tokens, index) {
+      match parse_function(tokens, index, &mut func_table) {
       Ok(function_code) => {
         code += &function_code;
       }
       Err(e) => { return Err(e); }
       }
+    }
+    // After the program is done
+    // Check if we have the main function
+    if !has_main(&func_table){
+      return Err(String::from("Main function not detected in the program"));
     }
     return Ok(code);
 }
@@ -443,7 +482,7 @@ fn create_temp() -> String {
 // }
 // a loop is done to handle statements.
 
-fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+fn parse_function(tokens: &Vec<Token>, index: &mut usize, func_table: &mut Vec<String>) -> Result<String, String> {
     
     match tokens[*index] {
     Token::Func => { *index += 1; }
@@ -458,10 +497,10 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
     Token::Ident(ident) => {
         *index += 1;
         // if identifier has been previously declared, return error
-        if find_symbol(&symbol_table, ident){
-            return Err(format!("Error, found duplicating function name {ident}"));
+        if find_func_name(&func_table, ident){
+            return Err(format!("Found duplicating function name {ident}"));
         }
-        symbol_table.push((ident.clone(), "int".to_string()));
+        func_table.push(ident.clone());
         function_code = format!("%func {ident}");
     }
     _  => { return Err(String::from("functions must have a function identifier"));}
@@ -516,7 +555,7 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
     }
 
     while !matches!(tokens[*index], Token::RightCurly) {
-        match parse_statement(tokens, index, &mut symbol_table) {
+        match parse_statement(tokens, index, &mut symbol_table, func_table) {
         Ok(statement_code) => {
           // Each statement should contain a newline itself
           function_code += &statement_code;
@@ -542,10 +581,10 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize) -> Result<String, Stri
 // print(a)
 // read(a)
 // returns epsilon if '}'
-fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>) -> Result<String, String> {
+fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>) -> Result<String, String> {
     match tokens[*index] {
     Token::Int => parse_declaration_statement(tokens, index, symbol_table),
-    Token::Ident(_) => parse_assignment_statement(tokens, index),
+    Token::Ident(_) => parse_assignment_statement(tokens, index, symbol_table, func_table),
     Token::Return => parse_return_statement(tokens, index),
     Token::Print => parse_print_statement(tokens, index),
     Token::Read => parse_read_statement(tokens, index),
@@ -569,7 +608,7 @@ fn parse_declaration(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut 
     Token::Ident(ident) => {
         // if identifier has been previously declared, return error
         if find_symbol(&symbol_table, ident){
-            return Err(format!("Error, found duplicating declaration inside function {ident}"));
+            return Err(format!("Found duplicating declaration inside function {ident}"));
         }
         symbol_table.push((ident.clone(), "int".to_string()));
         *index += 1;
@@ -637,7 +676,7 @@ fn parse_declaration_statement(tokens: &Vec<Token>, index: &mut usize, symbol_ta
         *index += 1;
         // if identifier has been previously declared, return error
         if find_symbol(&symbol_table, ident){
-            return Err(format!("Error, found duplicating declaration inside statement {ident}"));
+            return Err(format!("Found duplicating declaration inside statement {ident}"));
         }
         if is_variable {
           statement = format!("%int {ident}\n");
@@ -712,7 +751,7 @@ fn parse_var(tokens: &Vec<Token>, index: &mut usize) -> Result<Expression, Strin
   }
 }
 
-fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
+fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>) -> Result<String, String> {
     let mut statement = String::new();
 
     let dest: String;
@@ -722,6 +761,19 @@ fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<
         // This is because expression is involved in parse_var
         statement += &var_statement.code;
         dest = var_statement.name;
+        // Check if variable has been declared
+        // Extract symbol name
+        let dest_name: String;
+        if dest.contains('[') {
+            // In our program, by the template, the array will all be under symbol name: array
+            // Else, the interpreter cannot recognize
+            dest_name = "array".to_string();
+        } else {
+            dest_name = dest.clone();
+        };
+        if !find_symbol(&symbol_table, &dest_name){
+          return Err(format!("Variable {dest} called before declaration"));
+        }
       },
       Err(e) => {return Err(e);}
     }
@@ -735,8 +787,27 @@ fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<
     Ok(expression) => {
         let src = expression.name;
         statement += &expression.code;
+
+        // Check if both dest and src are in the symbol table
+        if find_symbol(&symbol_table, &dest) && find_symbol(&symbol_table, &src){
+          // Fetch their type from the symbol table
+          let dest_type = find_type(symbol_table, &dest);
+          let src_type = find_type(symbol_table, &src);
+
+          if dest_type != src_type {
+            return Err(format!("Type mismatch between {} and {}", dest, src));
+          }         
+        }
+
+        // Continue only when type matches
         // Check if the expression is a function call
         if src.contains("(") && src.contains(")") {
+          // Extract function name (substring before the first '(')
+          let function_name = src.split('(').next().unwrap().to_string(); 
+          // Check if function has been declared
+          if !find_func_name(&func_table, &function_name){
+            return Err(format!("Function {function_name} called before declaration"));
+          }
           statement += &format!("%call {dest}, {src}\n");
         } else {
           statement += &format!("%mov {dest}, {src}\n");
