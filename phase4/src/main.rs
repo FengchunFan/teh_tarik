@@ -592,6 +592,7 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Ve
     Token::Read => parse_read_statement(tokens, index),
     // Token::Break => parse_break_statement(tokens, index),
     // Token::Continue => parse_continue_statement(tokens, index),
+    Token::While => parse_while_loop(tokens, index, symbol_table, func_table),
     _ => Err(String::from("invalid statement"))
     }
 }
@@ -824,6 +825,80 @@ fn parse_assignment_statement(tokens: &Vec<Token>, index: &mut usize, symbol_tab
     }
 
     return Ok(statement);
+}
+
+fn parse_boolean_expression(tokens: &Vec<Token>, index: &mut usize) -> Result<Expression, String> {
+    let expr1 = parse_expression(tokens, index)?;
+    let opcode: &str;
+    match tokens[*index] {
+    Token::Less => {
+        opcode = "%lt";
+        *index += 1;
+    }
+    _ => {
+        return Err(String::from("Invalid boolean expression. Must have a '<', '<=', '>', or any other comparsion operator."));
+    }
+    }
+    let expr2 = parse_expression(tokens, index)?;
+
+    let dest = create_temp();
+    let src1 = expr1.name;
+    let src2 = expr2.name;
+    let mut statement = String::from("");
+    statement += &expr1.code;
+    statement += &expr2.code;
+    statement += &format!("%int {dest}\n");
+    statement += &format!("{opcode} {dest}, {src1}, {src2}\n");
+
+    let expression = Expression {
+        code : statement,
+        name : dest,
+    };
+
+    Ok(expression)
+}
+
+fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>) -> Result<String, String> {
+
+    match tokens[*index] {
+    Token::While => {*index += 1;}
+    _ => {return Err(String::from("While statements must being with 'while' keyword"));}
+    }
+
+    let boolean_expression = parse_boolean_expression(tokens, index)?;
+
+    match tokens[*index] {
+    Token::LeftCurly => { *index += 1; }
+    _ => { return Err(String::from("expected '{'"));}
+    }
+
+    let mut while_loop_body = String::from("");
+    while !matches!(tokens[*index], Token::RightCurly) {
+        match parse_statement(tokens, index, symbol_table, func_table) {
+        Ok(statement_code) => {
+            while_loop_body += &statement_code;
+        }
+        Err(e) => {return Err(e);}
+        }
+    }
+
+
+    match tokens[*index] {
+    Token::RightCurly => { *index += 1; }
+    _ => { return Err(String::from("expected '}'"));}
+    }
+
+    // todo: this example does not handle nested loops. 
+    // this is a relatively 'simple' demonstration of how to do simple loops.
+    let mut loop_code = String::from("");
+    loop_code += ":loop_begin\n";
+    loop_code += &boolean_expression.code;
+    loop_code += &format!("%branch_ifn {}, :endloop1\n", boolean_expression.name);
+    loop_code += &while_loop_body;
+    loop_code += "%jmp :loop_begin\n";
+    loop_code += ":endloop1\n";
+
+    return Ok(loop_code);
 }
 
 fn parse_return_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String, String> {
