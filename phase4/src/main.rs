@@ -474,7 +474,6 @@ fn create_temp() -> String {
     }
 }
 
-
 // parse function such as:
 // func main(int a, int b) {
 //    # ... statements here...
@@ -556,8 +555,8 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize, func_table: &mut Vec<S
 
     while !matches!(tokens[*index], Token::RightCurly) {
         // Add a boolean check to check if parse_statement is called inside loop
-        // let mut inside_loop = false;
-        match parse_statement(tokens, index, &mut symbol_table, func_table) {
+        let mut inside_loop = false;
+        match parse_statement(tokens, index, &mut symbol_table, func_table, &mut inside_loop) {
         Ok(statement_code) => {
           // Each statement should contain a newline itself
           function_code += &statement_code;
@@ -583,16 +582,16 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize, func_table: &mut Vec<S
 // print(a)
 // read(a)
 // returns epsilon if '}'
-fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>) -> Result<String, String> {
+fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>, inside_loop: &mut bool) -> Result<String, String> {
     match tokens[*index] {
     Token::Int => parse_declaration_statement(tokens, index, symbol_table),
     Token::Ident(_) => parse_assignment_statement(tokens, index, symbol_table, func_table),
     Token::Return => parse_return_statement(tokens, index),
     Token::Print => parse_print_statement(tokens, index),
     Token::Read => parse_read_statement(tokens, index),
-    // Token::Break => parse_break_statement(tokens, index),
-    // Token::Continue => parse_continue_statement(tokens, index),
-    Token::While => parse_while_loop(tokens, index, symbol_table, func_table),
+    Token::Break => parse_break_statement(tokens, index, inside_loop),
+    Token::Continue => parse_continue_statement(tokens, index, inside_loop),
+    Token::While => parse_while_loop(tokens, index, symbol_table, func_table, inside_loop),
     _ => Err(String::from("invalid statement"))
     }
 }
@@ -832,8 +831,28 @@ fn parse_boolean_expression(tokens: &Vec<Token>, index: &mut usize) -> Result<Ex
     let opcode: &str;
     match tokens[*index] {
     Token::Less => {
-        opcode = "%lt";
-        *index += 1;
+      opcode = "%lt";
+      *index += 1;
+    }
+    Token::LessEqual => {
+      opcode = "%le";
+      *index += 1;
+    }
+    Token::Equality => {
+      opcode = "%eq";
+      *index += 1;
+    }
+    Token::NotEqual => {
+      opcode = "%neq";
+      *index += 1;
+    }
+    Token::GreaterEqual => {
+      opcode = "%ge";
+      *index += 1;
+    }
+    Token::Greater => {
+      opcode = "%gt";
+      *index += 1;
     }
     _ => {
         return Err(String::from("Invalid boolean expression. Must have a '<', '<=', '>', or any other comparsion operator."));
@@ -858,12 +877,23 @@ fn parse_boolean_expression(tokens: &Vec<Token>, index: &mut usize) -> Result<Ex
     Ok(expression)
 }
 
-fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>) -> Result<String, String> {
+static mut LOOP_NUM: i64 = 0;
+fn create_LOOP() -> String {
+    unsafe {
+        LOOP_NUM += 1;
+        format!("_loop{}", LOOP_NUM)
+    }
+}
+
+fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>, inside_loop: &mut bool) -> Result<String, String> {
 
     match tokens[*index] {
     Token::While => {*index += 1;}
     _ => {return Err(String::from("While statements must being with 'while' keyword"));}
     }
+
+    // Set the inside_loop boolean to True
+    *inside_loop = true;
 
     let boolean_expression = parse_boolean_expression(tokens, index)?;
 
@@ -874,9 +904,12 @@ fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut V
 
     let mut while_loop_body = String::from("");
     while !matches!(tokens[*index], Token::RightCurly) {
-        match parse_statement(tokens, index, symbol_table, func_table) {
+        match parse_statement(tokens, index, symbol_table, func_table, inside_loop) {
         Ok(statement_code) => {
+          // If statement code is not continue or break, execute regularly
+          if statement_code != "continue" && statement_code != "break" {
             while_loop_body += &statement_code;
+          }
         }
         Err(e) => {return Err(e);}
         }
@@ -897,6 +930,10 @@ fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut V
     loop_code += &while_loop_body;
     loop_code += "%jmp :loop_begin\n";
     loop_code += ":endloop1\n";
+
+    // We are ready to exit
+    // Set inside_loop boolean to false
+    *inside_loop = false;
 
     return Ok(loop_code);
 }
@@ -974,6 +1011,44 @@ fn parse_read_statement(tokens: &Vec<Token>, index: &mut usize) -> Result<String
     let mut statement = expression.code;
     statement += &format!("%input {}\n", expression.name);
     return Ok(statement);
+}
+
+fn parse_break_statement(tokens: &Vec<Token>, index: &mut usize, inside_loop: &mut bool) -> Result<String, String> {
+  match tokens[*index] {
+    Token::Break=> {*index += 1;}
+    _ => {return Err(String::from("Break statements must begin with a break keyword"));}
+  }
+
+  // Check if we are inside a loop
+  if !*inside_loop {
+    return Err(String::from("Break statement not inside a loop"));
+  }
+
+  match tokens[*index] {
+    Token::Semicolon => {*index += 1;}
+    _ => {return Err(String::from("Statement is missing the ';' operator"));}
+  }
+
+  return Ok("break".to_string());
+}
+
+fn parse_continue_statement(tokens: &Vec<Token>, index: &mut usize, inside_loop: &mut bool) -> Result<String, String> {
+  match tokens[*index] {
+    Token::Continue=> {*index += 1;}
+    _ => {return Err(String::from("Continue statements must begin with a continue keyword"));}
+  }
+
+  // Check if we are inside a loop
+  if !*inside_loop {
+    return Err(String::from("Continue statement not inside a loop"));
+  }
+
+  match tokens[*index] {
+    Token::Semicolon => {*index += 1;}
+    _ => {return Err(String::from("Statement is missing the ';' operator"));}
+  }
+
+  return Ok("continue".to_string());
 }
 
 // parsing complex expressions such as: "a + b - (c * d) / (f + g - 8);
