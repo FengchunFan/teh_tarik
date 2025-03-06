@@ -894,6 +894,8 @@ fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut V
 
     // Set the inside_loop boolean to True
     *inside_loop = true;
+    // Get current loop num
+    let curr_loop = create_LOOP();
 
     let boolean_expression = parse_boolean_expression(tokens, index)?;
 
@@ -915,21 +917,19 @@ fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut V
         }
     }
 
-
     match tokens[*index] {
     Token::RightCurly => { *index += 1; }
     _ => { return Err(String::from("expected '}'"));}
     }
 
-    // todo: this example does not handle nested loops. 
-    // this is a relatively 'simple' demonstration of how to do simple loops.
     let mut loop_code = String::from("");
-    loop_code += ":loop_begin\n";
+    // Thus different loop have its own num, and now capable with nested loop
+    loop_code += &format!(":{curr_loop}_begin\n");
     loop_code += &boolean_expression.code;
-    loop_code += &format!("%branch_ifn {}, :endloop1\n", boolean_expression.name);
+    loop_code += &format!("%branch_ifn {}, :end{}\n", boolean_expression.name, curr_loop);
     loop_code += &while_loop_body;
-    loop_code += "%jmp :loop_begin\n";
-    loop_code += ":endloop1\n";
+    loop_code += &format!("%jmp :{curr_loop}_begin\n");
+    loop_code += &format!(":end{curr_loop}\n");
 
     // We are ready to exit
     // Set inside_loop boolean to false
