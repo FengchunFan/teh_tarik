@@ -912,6 +912,16 @@ fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut V
           if statement_code != "continue" && statement_code != "break" {
             while_loop_body += &statement_code;
           }
+          // If we have encountered continue
+          if statement_code == "continue" {
+            // We will be jumping to the start of the current loop
+            while_loop_body += &format!("%jmp :{curr_loop}_begin\n");
+          }
+          // If we have encountered break
+          if statement_code == "break" {
+            // We will be jumping to the end of the current loop
+            while_loop_body += &format!("%jmp :end{curr_loop}\n");
+          }
         }
         Err(e) => {return Err(e);}
         }
