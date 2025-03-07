@@ -556,7 +556,9 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize, func_table: &mut Vec<S
     while !matches!(tokens[*index], Token::RightCurly) {
         // Add a boolean check to check if parse_statement is called inside loop
         let mut inside_loop = false;
-        match parse_statement(tokens, index, &mut symbol_table, func_table, &mut inside_loop) {
+        // Add a string to keep track of the current while loop number
+        let mut while_loop_num = create_loop();
+        match parse_statement(tokens, index, &mut symbol_table, func_table, &mut inside_loop, &mut while_loop_num) {
         Ok(statement_code) => {
           // Each statement should contain a newline itself
           function_code += &statement_code;
@@ -582,7 +584,7 @@ fn parse_function(tokens: &Vec<Token>, index: &mut usize, func_table: &mut Vec<S
 // print(a)
 // read(a)
 // returns epsilon if '}'
-fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>, inside_loop: &mut bool) -> Result<String, String> {
+fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>, inside_loop: &mut bool, while_loop_num: &mut String) -> Result<String, String> {
     match tokens[*index] {
     Token::Int => parse_declaration_statement(tokens, index, symbol_table),
     Token::Ident(_) => parse_assignment_statement(tokens, index, symbol_table, func_table),
@@ -591,7 +593,8 @@ fn parse_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Ve
     Token::Read => parse_read_statement(tokens, index),
     Token::Break => parse_break_statement(tokens, index, inside_loop),
     Token::Continue => parse_continue_statement(tokens, index, inside_loop),
-    Token::While => parse_while_loop(tokens, index, symbol_table, func_table, inside_loop),
+    Token::While => parse_while_loop(tokens, index, symbol_table, func_table, inside_loop, while_loop_num),
+    Token::If => parse_if_statement(tokens, index, symbol_table, func_table, inside_loop, while_loop_num),
     _ => Err(String::from("invalid statement"))
     }
 }
@@ -877,15 +880,119 @@ fn parse_boolean_expression(tokens: &Vec<Token>, index: &mut usize) -> Result<Ex
     Ok(expression)
 }
 
+static mut LF_NUM: i64 = 0;
+fn create_if() -> String {
+    unsafe {
+        LF_NUM += 1;
+        format!("_if{}", LF_NUM)
+    }
+}
+
+fn parse_if_statement(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>, inside_loop: &mut bool, while_loop_num: &mut String) -> Result<String, String> {
+  match tokens[*index] {
+    Token::If => {*index += 1;}
+    _ => {return Err(String::from("If statements must being with 'if' keyword"));}
+  }
+  
+  // We do not need to change inside_loop boolean, because continue/break are not supported in if statement
+  // Get current loop num
+  let curr_if = create_if();
+
+  let boolean_expression = parse_boolean_expression(tokens, index)?;
+
+  match tokens[*index] {
+    Token::LeftCurly => { *index += 1; }
+    _ => { return Err(String::from("expected '{'"));}
+  }
+
+  let mut if_statement_body = String::from("");
+  while !matches!(tokens[*index], Token::RightCurly) {
+    match parse_statement(tokens, index, symbol_table, func_table, inside_loop, while_loop_num) {
+      Ok(statement_code) => {
+        if statement_code != "continue" && statement_code != "break" {
+          if_statement_body += &statement_code;
+        }
+        // If we have encountered continue
+        if statement_code == "continue" {
+          // We will be jumping to the start of the current loop
+          if_statement_body += &format!("%jmp :{while_loop_num}_begin\n");
+        }
+        // If we have encountered break
+        if statement_code == "break" {
+          // We will be jumping to the end of the current loop
+          if_statement_body += &format!("%jmp :end{while_loop_num}\n");
+        }
+      }
+      Err(e) => {return Err(e);}
+    }
+  }
+
+  match tokens[*index] {
+  Token::RightCurly => { *index += 1; }
+  _ => { return Err(String::from("expected '}'"));}
+  }
+
+  //When there is an else statement
+  let mut else_body_statement = String::from("");
+  while matches!(tokens[*index], Token::Else) {
+    *index += 1;
+    //We check if there is {statement*}
+    match tokens[*index] {
+      Token::LeftCurly => {*index += 1;}
+      _ => {return Err(String::from("Expected '{' under else statement"))}
+    }
+
+    //let mut else_body_statement = String::from("");
+    while !matches!(tokens[*index], Token::RightCurly) {
+      match parse_statement(tokens, index, symbol_table, func_table, inside_loop, while_loop_num) {
+        Ok(statement_code) => {
+          if statement_code != "continue" && statement_code != "break" {
+            else_body_statement += &statement_code;
+          }
+          // If we have encountered continue
+          if statement_code == "continue" {
+            // We will be jumping to the start of the current loop
+            else_body_statement += &format!("%jmp :{while_loop_num}_begin\n");
+          }
+          // If we have encountered break
+          if statement_code == "break" {
+            // We will be jumping to the end of the current loop
+            else_body_statement += &format!("%jmp :end{while_loop_num}\n");
+          }
+        }
+        Err(e) => {return Err(e);}
+      }
+    }
+
+    match tokens[*index] {
+      Token::RightCurly => {*index += 1;}
+      _ => {return Err(String::from("Expected '}' under else statement"))}
+    }
+  }
+
+  let mut if_statement = String::from("");
+  if_statement += &boolean_expression.code;
+  if_statement += &format!("%branch_if {}, :{curr_if}true\n", boolean_expression.name);
+  if_statement += &format!("%jmp :{curr_if}_else\n");
+  if_statement += &format!(":{curr_if}true\n");
+  if_statement += &if_statement_body;
+  if_statement += &format!("%jmp :end{curr_if}\n");
+  if_statement += &format!(":{curr_if}_else\n");
+  if_statement += &else_body_statement;
+  if_statement += &format!(":end{curr_if}\n");
+
+  return Ok(if_statement);
+}
+
 static mut LOOP_NUM: i64 = 0;
-fn create_LOOP() -> String {
+fn create_loop() -> String {
     unsafe {
         LOOP_NUM += 1;
         format!("_loop{}", LOOP_NUM)
     }
 }
 
-fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>, inside_loop: &mut bool) -> Result<String, String> {
+fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut Vec<(String, String)>, func_table: &mut Vec<String>, inside_loop: &mut bool, while_loop_num: &mut String) -> Result<String, String> {
 
     match tokens[*index] {
     Token::While => {*index += 1;}
@@ -895,7 +1002,9 @@ fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut V
     // Set the inside_loop boolean to True
     *inside_loop = true;
     // Get current loop num
-    let curr_loop = create_LOOP();
+    let curr_loop = create_loop();
+    // Update while_loop_num
+    *while_loop_num = curr_loop.clone();
 
     let boolean_expression = parse_boolean_expression(tokens, index)?;
 
@@ -906,7 +1015,7 @@ fn parse_while_loop(tokens: &Vec<Token>, index: &mut usize, symbol_table: &mut V
 
     let mut while_loop_body = String::from("");
     while !matches!(tokens[*index], Token::RightCurly) {
-        match parse_statement(tokens, index, symbol_table, func_table, inside_loop) {
+        match parse_statement(tokens, index, symbol_table, func_table, inside_loop, while_loop_num) {
         Ok(statement_code) => {
           // If statement code is not continue or break, execute regularly
           if statement_code != "continue" && statement_code != "break" {
